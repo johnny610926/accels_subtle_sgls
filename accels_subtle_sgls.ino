@@ -94,6 +94,30 @@ void setup() {
     accelgyro1.initialize();
     accelgyro2.initialize();
 
+    // Default Accel and Gyro ranges are 2G and 250 deg/sec respectively.
+    int range1 = accelgyro1.getFullScaleAccelRange();
+    int range2 = accelgyro2.getFullScaleAccelRange();
+    Serial.println("Accelerometer range = %d, %d", range1, range2)
+    range1 = accelgyro1.getFullScaleGyroRange();
+    range2 = accelgyro2.getFullScaleGyroRange();
+    Serial.println("Gyro range = %d, %d", range1, range2)
+
+    /* MPU6050_ACCEL_FS_2 : 2G
+     * MPU6050_ACCEL_FS_4 : 4G
+     * MPU6050_ACCEL_FS_8 : 8G
+     * MPU6050_ACCEL_FS_16 : 16G
+     */
+    //accelgyro1.setFullScaleAccelRange(MPU6050_ACCEL_FS_2)
+    //accelgyro2.setFullScaleAccelRange(MPU6050_ACCEL_FS_2)
+
+    /* MPU6050_GYRO_FS_250 : 250 degrees/sec
+     * MPU6050_GYRO_FS_500 : 500 degrees/sec
+     * MPU6050_GYRO_FS_1000 : 1000 degrees/sec
+     * MPU6050_GYRO_FS_2000 : 2000 degrees/sec
+     */
+    //accelgyro1.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+    //accelgyro2.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+    
     // verify connection
     Serial.println("Testing device connections...");
     Serial.println(accelgyro1.testConnection() ? "MPU6050_1 connection successful" : "MPU6050_1 connection failed");
