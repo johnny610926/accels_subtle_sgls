@@ -32,6 +32,11 @@ All MPU6050s are connected to the same I2C interface of Anrduino Nano. Try to re
     ```
     group-name is the data found before, and username is your Linux user name. **You will need to log out and in again for this change to take effect**.
 
+- Screen for monitoring serial port
+    ```
+    sudo apt-get install screen
+    screen /dev/ttyUSB0 115200
+    ```
 
 ## Reference
 - I2C and MPU6050 driver provided by Jeff Rowberg. [I2C lib](http://www.i2cdevlib.com/devices/mpu6050)
