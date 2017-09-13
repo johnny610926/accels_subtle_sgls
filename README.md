@@ -2,7 +2,7 @@
 
 The experiment components
 - Arduino Nano x 1
-- GY-521/MPU6050 x 2 (or 3)
+- GY-521/MPU6050 x 2 (or 3) : 16-bit ADC, 1KHz sample rate, 100Hz output rate
 - Codebase is from [jrowberg](https://github.com/jrowberg/i2cdevlib.git)
 
 All MPU6050s are connected to the same I2C interface of Anrduino Nano. Try to read all MPU6050s data (accelerometer xyz and gyro xyz) 
@@ -37,6 +37,19 @@ All MPU6050s are connected to the same I2C interface of Anrduino Nano. Try to re
     sudo apt-get install screen
     screen /dev/ttyUSB0 115200
     ```
+    Ctrl+A then Shift+H to log data into screenlog.0
+
+## Arduino IDE setting
+input your libraries path such as ```accels_subtle_sgls/libraries```
+in below textbox:
+- [Ubuntu] File->Preference->Settings->'Sketchbook location'
+- [iOS] Arduino->Preference->Settings->'Sketchbook location'
+
+Hot Keys
+- Ctrl+Shift+P : to list the commands for selection
+- Ctrl+Alt+R : Verify codes
+- Ctrl+Alt+U : Upload image to target board
+
 
 ## Reference
 - I2C and MPU6050 driver provided by Jeff Rowberg. [I2C lib](http://www.i2cdevlib.com/devices/mpu6050)

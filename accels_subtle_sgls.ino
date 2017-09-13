@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 // I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
 // for both classes must be in the include path of your project
+#include "SimpleTimer.h"
 #include "I2Cdev.h"
 #include "MPU6050.h"
 
@@ -41,21 +42,6 @@ THE SOFTWARE.
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
 #endif
-
-// class default I2C address is 0x68
-// specific I2C addresses may be passed as a parameter here
-// AD0 low = 0x68 (default for InvenSense evaluation board)
-// AD0 high = 0x69
-MPU6050 accelgyro1((uint8_t)0x68); // <-- use for AD0 low
-MPU6050 accelgyro2((uint8_t)0x69); // <-- use for AD0 high
-MPU6050 *accelgyro_array[2];
-
-int16_t ax[2], ay[2], az[2];
-int16_t gx[2], gy[2], gz[2];
-//int16_t accel_xyz[2][3];
-//int16_t gyro_xyz[2][3];
-
-
 
 // uncomment "OUTPUT_READABLE_ACCELGYRO" if you want to see a tab-separated
 // list of the accel X/Y/Z and then gyro X/Y/Z values in decimal. Easy to read,
@@ -68,9 +54,72 @@ int16_t gx[2], gy[2], gz[2];
 // for a human.
 //#define OUTPUT_BINARY_ACCELGYRO
 
+#define RECEIVE_DATA_TIME_INTERVAL  10 // ms
 
 #define LED_PIN 13
-bool blinkState = false;
+
+// class default I2C address is 0x68
+// specific I2C addresses may be passed as a parameter here
+// AD0 low = 0x68 (default for InvenSense evaluation board)
+// AD0 high = 0x69
+MPU6050 accelgyro1((uint8_t)0x68); // <-- use for AD0 low
+MPU6050 accelgyro2((uint8_t)0x69); // <-- use for AD0 high
+MPU6050 *accelgyro_array[2];
+
+int16_t ax[2], ay[2], az[2];
+int16_t gx[2], gy[2], gz[2];
+
+SimpleTimer ledTimer, recvI2CTimer;
+
+void toggleLED() {
+    static bool blinkState = false;
+    blinkState = !blinkState;
+    digitalWrite(LED_PIN, blinkState);
+}
+
+void recvI2C() {
+    #define ONLY_ACCEL  1
+    
+    unsigned long time_stamp = millis(); // micros();
+    char databuf[128];
+
+    // read raw accel/gyro measurements from device
+    //accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    //accelgyro1.getMotion6(&ax[0], &ay[0], &az[0], &gx[0], &gy[0], &gz[0]);
+    //accelgyro2.getMotion6(&ax[1], &ay[1], &az[1], &gx[1], &gy[1], &gz[1]);
+    for(int i = 0; i < 2; i++) {
+        #if ONLY_ACCEL == 1
+        accelgyro_array[i]->getAcceleration(&ax[i], &ay[i], &az[i]);
+        #else
+        accelgyro_array[i]->getMotion6(&ax[i], &ay[i], &az[i], &gx[i], &gy[i], &gz[i]);
+        #endif
+    }
+        
+    // these methods (and a few others) are also available
+    //accelgyro.getAcceleration(&ax, &ay, &az);
+    //accelgyro.getRotation(&gx, &gy, &gz);
+    
+    #ifdef OUTPUT_READABLE_ACCELGYRO
+        // display tab-separated accel/gyro x/y/z values
+        for (int i = 0; i < 2; i++) {
+            #if ONLY_ACCEL == 1
+            sprintf(databuf,"%d\t%lu\t%d\t%d\t%d\n", i+1, time_stamp, ax[i], ay[i], az[i]);
+            #else
+            sprintf(databuf,"%d\t%lu\t%d\t%d\t%d\t%d\t%d\t%d\n", i+1, time_stamp, ax[i], ay[i], az[i], gx[i], gy[i], gz[i]);
+            #endif
+            Serial.print(databuf);
+        }
+    #endif
+    
+    #ifdef OUTPUT_BINARY_ACCELGYRO
+        Serial.write((uint8_t)(ax >> 8)); Serial.write((uint8_t)(ax & 0xFF));
+        Serial.write((uint8_t)(ay >> 8)); Serial.write((uint8_t)(ay & 0xFF));
+        Serial.write((uint8_t)(az >> 8)); Serial.write((uint8_t)(az & 0xFF));
+        Serial.write((uint8_t)(gx >> 8)); Serial.write((uint8_t)(gx & 0xFF));
+        Serial.write((uint8_t)(gy >> 8)); Serial.write((uint8_t)(gy & 0xFF));
+        Serial.write((uint8_t)(gz >> 8)); Serial.write((uint8_t)(gz & 0xFF));
+    #endif
+}
 
 void setup() {
     accelgyro_array[0] = &accelgyro1;
@@ -95,12 +144,18 @@ void setup() {
     accelgyro2.initialize();
 
     // Default Accel and Gyro ranges are 2G and 250 deg/sec respectively.
-    int range1 = accelgyro1.getFullScaleAccelRange();
-    int range2 = accelgyro2.getFullScaleAccelRange();
-    Serial.println("Accelerometer range = %d, %d", range1, range2)
+    /*
+    uint8_t range1 = accelgyro1.getFullScaleAccelRange();
+    uint8_t range2 = accelgyro2.getFullScaleAccelRange();
+    Serial.print("Accelerometer range = ");
+    Serial.print(range1); Serial.print("\t");
+    Serial.println(range2);
     range1 = accelgyro1.getFullScaleGyroRange();
     range2 = accelgyro2.getFullScaleGyroRange();
-    Serial.println("Gyro range = %d, %d", range1, range2)
+    Serial.print("Gyro range = ");
+    Serial.print(range1); Serial.print("\t");
+    Serial.println(range2);
+    */
 
     /* MPU6050_ACCEL_FS_2 : 2G
      * MPU6050_ACCEL_FS_4 : 4G
@@ -148,48 +203,12 @@ void setup() {
 
     // configure Arduino LED for
     pinMode(LED_PIN, OUTPUT);
+
+    ledTimer.setInterval(500, toggleLED);
+    recvI2CTimer.setInterval(RECEIVE_DATA_TIME_INTERVAL, recvI2C); // read data every 10 ms
 }
 
 void loop() {
-    // read raw accel/gyro measurements from device
-    //accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    //accelgyro1.getMotion6(&ax[0], &ay[0], &az[0], &gx[0], &gy[0], &gz[0]);
-    //accelgyro2.getMotion6(&ax[1], &ay[1], &az[1], &gx[1], &gy[1], &gz[1]);
-    for(int i = 0; i < 2; i++) {
-        accelgyro_array[i]->getMotion6(&ax[i], &ay[i], &az[i], &gx[i], &gy[i], &gz[i]);
-    }
-    
-    // these methods (and a few others) are also available
-    //accelgyro.getAcceleration(&ax, &ay, &az);
-    //accelgyro.getRotation(&gx, &gy, &gz);
-
-    #ifdef OUTPUT_READABLE_ACCELGYRO
-        // display tab-separated accel/gyro x/y/z values
-        for (int i = 0; i < 2; i++) {
-            Serial.print(i==0 ? "1. a/g:\t" : "2. a/g:\t");
-            Serial.print(ax[i]); Serial.print("\t");
-            Serial.print(ay[i]); Serial.print("\t");
-            Serial.print(az[i]); Serial.print("\t");
-            Serial.print(gx[i]); Serial.print("\t");
-            Serial.print(gy[i]); Serial.print("\t");
-            Serial.println(gz[i]);
-        }
-    #endif
-
-    #ifdef OUTPUT_BINARY_ACCELGYRO
-        Serial.write((uint8_t)(ax >> 8)); Serial.write((uint8_t)(ax & 0xFF));
-        Serial.write((uint8_t)(ay >> 8)); Serial.write((uint8_t)(ay & 0xFF));
-        Serial.write((uint8_t)(az >> 8)); Serial.write((uint8_t)(az & 0xFF));
-        Serial.write((uint8_t)(gx >> 8)); Serial.write((uint8_t)(gx & 0xFF));
-        Serial.write((uint8_t)(gy >> 8)); Serial.write((uint8_t)(gy & 0xFF));
-        Serial.write((uint8_t)(gz >> 8)); Serial.write((uint8_t)(gz & 0xFF));
-    #endif
-
-    // blink LED to indicate activity
-    static uint16_t blink_cnt = 0;
-    if (blink_cnt++ > 100) {
-        blink_cnt = 0;
-        blinkState = !blinkState;
-        digitalWrite(LED_PIN, blinkState);
-    }
+    recvI2CTimer.run();
+    ledTimer.run();
 }
